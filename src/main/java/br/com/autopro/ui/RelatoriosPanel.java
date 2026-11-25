@@ -27,7 +27,7 @@ import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
-/** Relatórios consultáveis com filtros e exportação para CSV. */
+/** Relatórios consultáveis com filtros e exportação para PDF e CSV. */
 public class RelatoriosPanel extends JPanel implements Atualizavel {
 
     private static final long serialVersionUID = 1L;
@@ -41,6 +41,7 @@ public class RelatoriosPanel extends JPanel implements Atualizavel {
     private final CampoData fim = new CampoData();
     private final JComboBox<Object> status = new JComboBox<>();
     private final JButton exportar = UiUtil.botao("Exportar CSV", e -> exportar());
+    private final JButton exportarPdf = UiUtil.botao("Exportar PDF", e -> exportarPdf());
     private final DefaultTableModel modelo = new DefaultTableModel() {
         private static final long serialVersionUID = 1L;
 
@@ -52,6 +53,7 @@ public class RelatoriosPanel extends JPanel implements Atualizavel {
     private final TabelaPadrao tabela = new TabelaPadrao(modelo);
     private final JLabel resumo = new JLabel(" ");
     private transient Relatorio atual;
+    private TipoRelatorio tipoAtual;
 
     public RelatoriosPanel(ContextoApp ctx) {
         super(new BorderLayout(0, 8));
@@ -66,14 +68,15 @@ public class RelatoriosPanel extends JPanel implements Atualizavel {
         tipo.addActionListener(e -> ajustarFiltros());
         resumo.setFont(Tema.fonte(Font.BOLD, 13));
         exportar.setEnabled(false);
+        exportarPdf.setEnabled(false);
 
-        add(UiUtil.cabecalho("Relatórios", "Selecione o relatório, aplique os filtros e exporte para CSV."),
+        add(UiUtil.cabecalho("Relatórios", "Selecione o relatório, aplique os filtros e exporte para PDF ou CSV."),
                 BorderLayout.NORTH);
 
         JPanel filtros = new JPanel(new BorderLayout(0, 4));
         filtros.setOpaque(false);
         filtros.add(UiUtil.linhaBotoes(FlowLayout.LEFT, new JLabel("Relatório:"), tipo,
-                UiUtil.botaoPrimario("Gerar", e -> gerar()), UiUtil.botao("Limpar filtros", e -> limpar()), exportar),
+                UiUtil.botaoPrimario("Gerar", e -> gerar()), UiUtil.botao("Limpar filtros", e -> limpar()), exportarPdf, exportar),
                 BorderLayout.NORTH);
         filtros.add(UiUtil.linhaBotoes(FlowLayout.LEFT,
                 new JLabel("Cliente:"), cliente, new JLabel("Placa:"), placa,
@@ -134,7 +137,10 @@ public class RelatoriosPanel extends JPanel implements Atualizavel {
                 f.setStatus((StatusOrdem) status.getSelectedItem());
             }
             return ctx.relatorios().gerar(t, f);
-        }).ifPresent(this::exibir);
+        }).ifPresent(r -> {
+            tipoAtual = t;
+            exibir(r);
+        });
     }
 
     private void exibir(Relatorio r) {
@@ -143,6 +149,16 @@ public class RelatoriosPanel extends JPanel implements Atualizavel {
         tabela.setAutoCreateRowSorter(true);
         resumo.setText(r.getTitulo() + " - " + r.getResumo());
         exportar.setEnabled(true);
+        exportarPdf.setEnabled(true);
+    }
+
+    private void exportarPdf() {
+        if (atual == null) {
+            UiUtil.aviso(this, "Gere um relatório antes de exportar.");
+            return;
+        }
+        UiUtil.obter(this, () -> ctx.relatorios().exportarPdf(atual, tipoAtual))
+                .ifPresent(arquivo -> UiUtil.arquivoGerado(this, arquivo));
     }
 
     private void exportar() {

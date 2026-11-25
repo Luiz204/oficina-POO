@@ -15,9 +15,12 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Cursor;
+import java.awt.Desktop;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.event.ActionListener;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.Optional;
 import java.util.function.Supplier;
 import java.util.logging.Level;
@@ -133,6 +136,24 @@ public final class UiUtil {
 
     public static void sucesso(Component pai, String mensagem) {
         JOptionPane.showMessageDialog(pai, mensagem, "Sucesso", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    /** Informa onde o arquivo foi gerado e, se o sistema permitir, oferece abri-lo no visualizador padrão. */
+    public static void arquivoGerado(Component pai, Path arquivo) {
+        boolean podeAbrir = Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.OPEN);
+        if (!podeAbrir) {
+            sucesso(pai, "PDF gerado em:\n" + arquivo);
+            return;
+        }
+        if (JOptionPane.showConfirmDialog(pai, "PDF gerado em:\n" + arquivo + "\n\nDeseja abrir o arquivo agora?",
+                "Sucesso", JOptionPane.YES_NO_OPTION, JOptionPane.INFORMATION_MESSAGE) == JOptionPane.YES_OPTION) {
+            try {
+                Desktop.getDesktop().open(arquivo.toFile());
+            } catch (IOException | RuntimeException e) {
+                LOG.log(Level.WARNING, "Não foi possível abrir " + arquivo, e);
+                aviso(pai, "Não foi possível abrir o PDF automaticamente. Abra-o pela pasta:\n" + arquivo.getParent());
+            }
+        }
     }
 
     public static void aviso(Component pai, String mensagem) {
