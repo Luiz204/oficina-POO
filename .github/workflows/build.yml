@@ -1,0 +1,47 @@
+name: Build e testes
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Compilar, rodar testes unitários e gerar o JAR
+        run: mvn -B clean package
+
+      - name: Testes de integração com MySQL 8
+        run: >-
+          mvn -B test -Dautopro.it=true
+          -Dautopro.it.usuario=root -Dautopro.it.senha=root
+          -Dautopro.it.servidor=jdbc:mysql://127.0.0.1:3306/
+
+      - name: Guardar o JAR gerado
+        uses: actions/upload-artifact@v4
+        with:
+          name: autopro-jar
+          path: target/autopro.jar
