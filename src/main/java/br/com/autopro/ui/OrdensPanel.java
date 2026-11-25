@@ -70,7 +70,8 @@ public class OrdensPanel extends JPanel implements Atualizavel {
                 UiUtil.botao("Abrir / editar", e -> abrir()),
                 btVerificar, btIniciar, btPronta, btPagar, btEntregar), BorderLayout.NORTH);
         acoes.add(UiUtil.linhaBotoes(FlowLayout.LEFT,
-                UiUtil.botao("Histórico da ordem", e -> historico()), btExcluir), BorderLayout.SOUTH);
+                UiUtil.botao("Histórico da ordem", e -> historico()),
+                UiUtil.botao("Gerar PDF da OS", e -> gerarPdf()), btExcluir), BorderLayout.SOUTH);
         add(acoes, BorderLayout.SOUTH);
         atualizarBotoes();
     }
@@ -192,6 +193,14 @@ public class OrdensPanel extends JPanel implements Atualizavel {
                 atualizar();
             }
         });
+    }
+
+    private void gerarPdf() {
+        selecionada().ifPresent(o -> UiUtil.obter(this, () -> {
+            OrdemServico completa = ctx.ordens().buscar(o.getId());
+            Pagamento pagamento = ctx.pagamentos().buscarPorOrdem(o.getId()).orElse(null);
+            return ctx.relatorios().exportarPdfOrdem(completa, pagamento);
+        }).ifPresent(arquivo -> UiUtil.arquivoGerado(this, arquivo)));
     }
 
     private void historico() {
